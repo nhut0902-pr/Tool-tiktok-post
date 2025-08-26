@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Lịch sử link</title>
+</head>
+<body>
+<h1>Lịch sử link</h1>
+<table border="1">
+<tr><th>ID</th><th>URL</th><th>Status</th><th>Result</th><th>Schedule</th><th>Action</th></tr>
+{% for id,url,status,result,schedule in links %}
+<tr>
+<td>{{ id }}</td>
+<td><a href="{{ url }}">{{ url }}</a></td>
+<td>{{ status }}</td>
+<td>{{ result }}</td>
+<td>{{ schedule }}</td>
+<td>{% if status=="pending" %}<a href="{{ url_for('process_link', link_id=id) }}">Xử lý</a>{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+<br>
+<a href="{{ url_for('index') }}">Trở về</a>
+</body>
+</html>
