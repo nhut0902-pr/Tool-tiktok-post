@@ -1,25 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>API Keys Configuration</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cấu hình API Keys</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-<h1>Điền API Keys</h1>
+<body class="bg-light">
+<div class="container py-5">
+<h1 class="mb-4">Điền API Keys</h1>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-info">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
 <form method="POST">
-<label>Hugging Face Token:</label><br>
-<input type="text" name="hf_token" value="{{ keys[0] }}"><br><br>
-
-<label>Unsplash Access Key:</label><br>
-<input type="text" name="unsplash_key" value="{{ keys[1] }}"><br><br>
-
-<label>Facebook Page ID:</label><br>
-<input type="text" name="fb_page_id" value="{{ keys[2] }}"><br><br>
-
-<label>Facebook Page Access Token:</label><br>
-<input type="text" name="fb_page_token" value="{{ keys[3] }}"><br><br>
-
-<button type="submit">Lưu API Keys</button>
+  <div class="mb-3">
+    <label class="form-label">Hugging Face Token</label>
+    <input type="text" class="form-control" name="hf_token" value="{{ keys[0] }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Unsplash Access Key</label>
+    <input type="text" class="form-control" name="unsplash_key" value="{{ keys[1] }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Facebook Page ID</label>
+    <input type="text" class="form-control" name="fb_page_id" value="{{ keys[2] }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Facebook Page Access Token</label>
+    <input type="text" class="form-control" name="fb_page_token" value="{{ keys[3] }}">
+  </div>
+  <button type="submit" class="btn btn-primary">Lưu API Keys</button>
 </form>
-<a href="{{ url_for('index') }}">Trở về trang chính</a>
+
+<a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Trở về trang chính</a>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
