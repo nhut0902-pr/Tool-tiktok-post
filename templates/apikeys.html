@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Keys Configuration</title>
+</head>
+<body>
+<h1>Điền API Keys</h1>
+<form method="POST">
+<label>Hugging Face Token:</label><br>
+<input type="text" name="hf_token" value="{{ keys[0] }}"><br><br>
+
+<label>Unsplash Access Key:</label><br>
+<input type="text" name="unsplash_key" value="{{ keys[1] }}"><br><br>
+
+<label>Facebook Page ID:</label><br>
+<input type="text" name="fb_page_id" value="{{ keys[2] }}"><br><br>
+
+<label>Facebook Page Access Token:</label><br>
+<input type="text" name="fb_page_token" value="{{ keys[3] }}"><br><br>
+
+<button type="submit">Lưu API Keys</button>
+</form>
+<a href="{{ url_for('index') }}">Trở về trang chính</a>
+</body>
+</html>
