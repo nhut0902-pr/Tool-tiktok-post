@@ -1,45 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lịch sử link</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<div class="container py-5">
-<h1 class="mb-4">Lịch sử link TikTok</h1>
-
-<table class="table table-striped table-bordered bg-white">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>URL</th>
-            <th>Status</th>
-            <th>Result</th>
-            <th>Schedule</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for id,url,status,result,schedule in links %}
-        <tr>
-            <td>{{ id }}</td>
-            <td><a href="{{ url }}" target="_blank">{{ url }}</a></td>
-            <td>{{ status }}</td>
-            <td>{{ result }}</td>
-            <td>{{ schedule or "-" }}</td>
+<!-- templates/history.html -->
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lịch sử</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-light">
+    <div class="container py-4">
+      <h1 class="mb-4">Lịch sử link</h1>
+      <a class="btn btn-secondary mb-3" href="{{ url_for('index') }}">Trở về</a>
+      <table class="table table-bordered bg-white">
+        <thead><tr><th>ID</th><th>URL</th><th>Status</th><th>Result</th><th>Schedule</th><th>Created</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for r in links %}
+          <tr>
+            <td>{{ r['id'] }}</td>
+            <td><a href="{{ r['url'] }}" target="_blank">{{ r['url'] }}</a></td>
+            <td>{{ r['status'] }}</td>
+            <td style="max-width:300px; word-break:break-word;">{{ r['result'] }}</td>
+            <td>{{ r['schedule_time'] or '-' }}</td>
+            <td>{{ r['created_at'] }}</td>
             <td>
-                {% if status=="pending" %}
-                <a href="{{ url_for('process_link', link_id=id) }}" class="btn btn-sm btn-success">Xử lý</a>
-                {% endif %}
+              {% if r['status'] == 'pending' %}
+                <a class="btn btn-sm btn-success" href="{{ url_for('process_link', link_id=r['id']) }}">Xử lý</a>
+              {% endif %}
             </td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
-<a href="{{ url_for('index') }}" class="btn btn-secondary">Trở về</a>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </body>
 </html>
