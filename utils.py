@@ -1,114 +1,179 @@
-import requests
+# utils.py
+import os
 import re
+import time
+import json
+import unicodedata
+import requests
+import sqlite3
+from typing import Dict, Any, Optional
 
-def get_tiktok_metadata(url):
-    """
-    Lấy metadata từ API trung gian. Có thể dùng RapidAPI hoặc self-hosted scraper.
-    """
-    try:
-        api_url = "https://tiktok-metadata.p.rapidapi.com/"  # Ví dụ RapidAPI
-        headers = {
-            "X-RapidAPI-Key": "YOUR_RAPID_API_KEY",
-            "X-RapidAPI-Host": "tiktok-metadata.p.rapidapi.com"
-        }
-        response = requests.get(api_url, headers=headers, params={"url": url})
-        if response.status_code == 200:
-            return response.json()
-        return {}
-    except Exception as e:
-        return {"error": str(e)}
+APP_DB = "db.sqlite3"
+HF_MODEL_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+
+URL_PATTERN = re.compile(r"http\S+|www\.\S+", flags=re.IGNORECASE)
+CTRL_PATTERN = re.compile(r"[\u0000-\u0008\u000B-\u000C\u000E-\u001F]")
 
 
-def summarize_with_hf(raw_text, hf_token):
-    """
-    Tóm tắt văn bản với Hugging Face, bỏ link TikTok, sửa lỗi ký tự.
-    """
-    try:
-        # 1. Loại bỏ link
-        clean_text = re.sub(r'http\S+', '', raw_text)
-
-        # 2. Chuẩn hóa ký tự UTF-8
-        clean_text = clean_text.encode('utf-8', errors='ignore').decode('utf-8')
-
-        # 3. Gọi API Hugging Face
-        API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
-        headers = {"Authorization": f"Bearer {hf_token}"}
-        payload = {
-            "inputs": clean_text,
-            "parameters": {
-                "min_length": 100,
-                "max_length": 300,
-                "do_sample": False
-            }
-        }
-        response = requests.post(API_URL, headers=headers, json=payload)
-        result = response.json()
-
-        if isinstance(result, list) and len(result) > 0 and "summary_text" in result[0]:
-            return result[0]["summary_text"]
-        return "Không thể tóm tắt nội dung."
-    except Exception as e:
-        return f"Lỗi tóm tắt: {e}"
-
-
-def get_unsplash_image(query, unsplash_key):
-    """
-    Lấy ảnh từ Unsplash dựa trên từ khóa (vd: AI, công nghệ).
-    """
-    try:
-        url = "https://api.unsplash.com/photos/random"
-        headers = {"Authorization": f"Client-ID {unsplash_key}"}
-        params = {"query": query, "orientation": "landscape"}
-        response = requests.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            data = response.json()
-            return data.get("urls", {}).get("regular", "")
+def sanitize_text(text: Optional[str]) -> str:
+    if not text:
         return ""
+    # normalize unicode
+    text = unicodedata.normalize("NFKC", text)
+    # ensure utf-8 safe
+    text = text.encode("utf-8", errors="ignore").decode("utf-8", errors="ignore")
+    # remove URLs
+    text = URL_PATTERN.sub("", text)
+    # remove control chars
+    text = CTRL_PATTERN.sub("", text)
+    # collapse spaces
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def fetch_tiktok_meta(video_url: str) -> Optional[Dict[str, Any]]:
+    """Use TikTok oEmbed to get basic metadata (title, author_name...)"""
+    try:
+        r = requests.get("https://www.tiktok.com/oembed", params={"url": video_url},
+                         headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+        r.raise_for_status()
+        return r.json()
     except Exception:
-        return ""
+        return None
 
 
-def post_to_facebook(page_id, page_token, message, image_url=None):
-    """
-    Đăng bài lên Facebook Page.
-    """
+def unsplash_search_image(query: str, unsplash_key: str) -> Optional[Dict[str, Any]]:
+    if not unsplash_key:
+        return None
     try:
-        if image_url:
-            url = f"https://graph.facebook.com/{page_id}/photos"
-            payload = {
-                "url": image_url,
-                "caption": message,
-                "access_token": page_token
-            }
-        else:
-            url = f"https://graph.facebook.com/{page_id}/feed"
-            payload = {
-                "message": message,
-                "access_token": page_token
-            }
-
-        response = requests.post(url, data=payload)
-        return response.json()
-    except Exception as e:
-        return {"error": str(e)}
+        q = sanitize_text(query) or "artificial intelligence"
+        r = requests.get("https://api.unsplash.com/search/photos",
+                         params={"query": q, "per_page": 1, "orientation": "landscape"},
+                         headers={"Accept-Version": "v1", "Authorization": f"Client-ID {unsplash_key}"},
+                         timeout=12)
+        r.raise_for_status()
+        data = r.json()
+        if data.get("results"):
+            return data["results"][0]
+        return None
+    except Exception:
+        return None
 
 
-def process_one_url(url, hf_token, unsplash_key, fb_page_id, fb_page_token):
+def download_image(url: str, dest_path: str) -> str:
+    r = requests.get(url, stream=True, timeout=30)
+    r.raise_for_status()
+    with open(dest_path, "wb") as f:
+        for chunk in r.iter_content(1024 * 32):
+            if chunk:
+                f.write(chunk)
+    return dest_path
+
+
+def summarize_with_hf(text: str, hf_token: str, min_length: int = 130, max_length: int = 320) -> str:
+    text = sanitize_text(text)
+    if not text:
+        return ""
+    headers = {"Authorization": f"Bearer {hf_token}"} if hf_token else {}
+    payload = {
+        "inputs": text,
+        "parameters": {"min_length": min_length, "max_length": max_length, "do_sample": False},
+        "options": {"wait_for_model": True}
+    }
+    try:
+        r = requests.post(HF_MODEL_URL, headers=headers, json=payload, timeout=40)
+        if r.status_code in (429, 503):
+            # busy or rate limited: fallback
+            return text[:max_length]
+        r.raise_for_status()
+        data = r.json()
+        if isinstance(data, list) and data and "summary_text" in data[0]:
+            return sanitize_text(data[0]["summary_text"])
+        # fallback if different structure
+        if isinstance(data, dict) and "error" in data:
+            return text[:max_length]
+        return sanitize_text(str(data))[:max_length]
+    except Exception:
+        # fallback naive shorten
+        return sanitize_text(text)[:max_length]
+
+
+def post_photo_to_facebook(photo_path: str, caption: str, fb_page_id: str, fb_page_token: str) -> Dict[str, Any]:
+    url = f"https://graph.facebook.com/v23.0/{fb_page_id}/photos"
+    with open(photo_path, "rb") as f:
+        files = {"source": f}
+        data = {"caption": caption, "access_token": fb_page_token}
+        r = requests.post(url, files=files, data=data, timeout=120)
+        r.raise_for_status()
+        return r.json()
+
+
+def get_api_keys_from_db() -> Dict[str, str]:
+    conn = sqlite3.connect(APP_DB)
+    c = conn.cursor()
+    c.execute("SELECT hf_token, unsplash_key, fb_page_id, fb_page_token FROM apikeys WHERE id=1")
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            "hf_token": row[0] or "",
+            "unsplash_key": row[1] or "",
+            "fb_page_id": row[2] or "",
+            "fb_page_token": row[3] or ""
+        }
+    # fallback to env
+    return {
+        "hf_token": os.environ.get("HF_TOKEN", ""),
+        "unsplash_key": os.environ.get("UNSPLASH_KEY", ""),
+        "fb_page_id": os.environ.get("FB_PAGE_ID", ""),
+        "fb_page_token": os.environ.get("FB_PAGE_TOKEN", "")
+    }
+
+
+def build_caption(meta: dict, summary: str) -> str:
+    author = sanitize_text(meta.get("author_name") or "")
+    parts = []
+    if summary:
+        parts.append(summary)
+    if author:
+        parts.append(f"\nNguồn: {author}")
+    parts.append("\n#AI #TinTucAI")
+    return "\n".join(parts).strip()
+
+
+def process_one_url(url: str, keys: Dict[str, str]) -> Dict[str, Any]:
     """
-    Quy trình xử lý một link TikTok:
-    - Lấy metadata
-    - Tóm tắt với AI
-    - Lấy ảnh từ Unsplash
-    - Đăng lên Facebook
+    Main pipeline function used by pipeline.py:
+    - fetch tiktok meta
+    - summarize using HF
+    - get unsplash image
+    - download and post to FB
+    Returns dict result or raises exception.
     """
-    meta = get_tiktok_metadata(url)
-    if not meta or "error" in meta:
-        return f"Lỗi lấy metadata: {meta.get('error', 'Không có dữ liệu')}"
+    meta = fetch_tiktok_meta(url)
+    if not meta:
+        raise Exception("Lỗi: không lấy được metadata TikTok (video có thể bị ẩn hoặc yêu cầu đăng nhập).")
 
-    raw_text = meta.get("title", "") + " " + meta.get("desc", "")
-    summary = summarize_with_hf(raw_text, hf_token)
+    raw_caption = meta.get("title") or meta.get("author_name") or ""
+    clean_caption = sanitize_text(raw_caption)
 
-    image_url = get_unsplash_image("artificial intelligence", unsplash_key)
-    fb_response = post_to_facebook(fb_page_id, fb_page_token, summary, image_url)
+    hf_token = keys.get("hf_token", "")
+    unsplash_key = keys.get("unsplash_key", "")
+    fb_page_id = keys.get("fb_page_id", "")
+    fb_page_token = keys.get("fb_page_token", "")
 
-    return fb_response
+    # summarize
+    summary = summarize_with_hf(clean_caption, hf_token, min_length=140, max_length=360)
+
+    # unsplash image
+    img = unsplash_search_image(clean_caption or "artificial intelligence", unsplash_key)
+    if not img:
+        raise Exception("Lỗi: không tìm được ảnh Unsplash.")
+    image_url = img["urls"]["regular"]
+    local_path = f"/tmp/unsplash_{int(time.time())}.jpg"
+    download_image(image_url, local_path)
+
+    caption = build_caption(meta, summary)
+    post_resp = post_photo_to_facebook(local_path, caption, fb_page_id, fb_page_token)
+    # return structured result
+    return {"facebook_response": post_resp, "summary": summary, "image_url": image_url, "meta": meta}
