@@ -15,13 +15,15 @@ def get_tiktok_video_data(url):
 def summarize_text(text, hf_api_key):
     headers = {"Authorization": f"Bearer {hf_api_key}"}
     payload = {"inputs": text}
-    resp = requests.post("https://api-inference.huggingface.co/models/facebook/bart-large-cnn", 
-                         headers=headers, json=payload)
+    resp = requests.post(
+        "https://api-inference.huggingface.co/models/facebook/bart-large-cnn", 
+        headers=headers, json=payload
+    )
     if resp.status_code == 200:
         return resp.json()[0]["summary_text"]
     return text
 
-# --- Unsplash image based on text ---
+# --- Unsplash image ---
 def get_unsplash_image(query, unsplash_access_key):
     url = f"https://api.unsplash.com/photos/random?query={quote(query)}&client_id={unsplash_access_key}"
     resp = requests.get(url)
@@ -30,12 +32,12 @@ def get_unsplash_image(query, unsplash_access_key):
     return None
 
 # --- Facebook Post ---
-def post_to_facebook(page_access_token, message, image_url=None):
+def post_to_facebook(page_access_token, message, image_url=None, fb_id=None):
     graph = facebook.GraphAPI(access_token=page_access_token)
     if image_url:
         graph.put_photo(image=requests.get(image_url).content, message=message)
     else:
-        graph.put_object(parent_object='me', connection_name='feed', message=message)
+        graph.put_object(parent_object=fb_id or 'me', connection_name='feed', message=message)
 
 # --- Text-to-Speech ---
 def text_to_speech(text, filename="tts.mp3"):
@@ -52,7 +54,7 @@ def init_db():
                   title TEXT, summary TEXT, message TEXT, image_url TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS api_keys
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  hf_api_key TEXT, unsplash_key TEXT, fb_token TEXT)''')
+                  hf_api_key TEXT, unsplash_key TEXT, fb_token TEXT, fb_id TEXT)''')
     conn.commit()
     conn.close()
 
@@ -64,28 +66,30 @@ def log_post(title, summary, message, image_url):
     conn.commit()
     conn.close()
 
-def save_api_keys(hf_api_key, unsplash_key, fb_token):
+def save_api_keys(hf_api_key, unsplash_key, fb_token, fb_id):
     conn = sqlite3.connect('db.sqlite')
     c = conn.cursor()
     c.execute("DELETE FROM api_keys")
-    c.execute("INSERT INTO api_keys (hf_api_key, unsplash_key, fb_token) VALUES (?, ?, ?)",
-              (hf_api_key, unsplash_key, fb_token))
+    c.execute("INSERT INTO api_keys (hf_api_key, unsplash_key, fb_token, fb_id) VALUES (?, ?, ?, ?)",
+              (hf_api_key, unsplash_key, fb_token, fb_id))
     conn.commit()
     conn.close()
 
 def load_api_keys():
     conn = sqlite3.connect('db.sqlite')
     c = conn.cursor()
-    c.execute("SELECT hf_api_key, unsplash_key, fb_token FROM api_keys ORDER BY id DESC LIMIT 1")
+    c.execute("SELECT hf_api_key, unsplash_key, fb_token, fb_id FROM api_keys ORDER BY id DESC LIMIT 1")
     keys = c.fetchone()
     conn.close()
     if keys:
-        return {"hf_api_key": keys[0], "unsplash_key": keys[1], "fb_token": keys[2]}
-    return {"hf_api_key":"", "unsplash_key":"", "fb_token":""}
+        return {"hf_api_key": keys[0], "unsplash_key": keys[1], "fb_token": keys[2], "fb_id": keys[3]}
+    return {"hf_api_key":"", "unsplash_key":"", "fb_token":"", "fb_id":""}
 
-# --- Generate hashtags from text ---
+# --- Generate hashtags ---
 def generate_hashtags(text):
     words = [w for w in text.split() if len(w) > 3]
     hashtags = [f"#{w.lower()}" for w in words[:5]]  # 5 hashtags max
     hashtags.append("#Nhutcoder")
+    hashtags.append("#ai")
+    hashtags.append("#congnghe")
     return " ".join(hashtags)
