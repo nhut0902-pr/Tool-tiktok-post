@@ -1,6 +1,7 @@
-Flask==2.3.2
-requests==2.31.0
-facebook-sdk==3.1.0
-gTTS==2.5.4
-python-dotenv==1.1.0
+Flask==3.0.3
+transformers==4.39.3
+torch>=2.0.0
+yt_dlp
+chartjs
+sqlite3-binary
 gunicorn==21.2.0
