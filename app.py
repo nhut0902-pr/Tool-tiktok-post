@@ -7,7 +7,6 @@ init_db()
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = None
-    tts_file = None
     keys = load_api_keys()
     
     if request.method == "POST":
@@ -15,30 +14,24 @@ def index():
         hf_api_key = request.form.get("hf_api_key")
         unsplash_key = request.form.get("unsplash_key")
         fb_token = request.form.get("fb_token")
+        fb_id = request.form.get("fb_id")
         
-        # Lưu API Keys vào DB
-        save_api_keys(hf_api_key, unsplash_key, fb_token)
+        save_api_keys(hf_api_key, unsplash_key, fb_token, fb_id)
         
         video_data = get_tiktok_video_data(tiktok_url)
         if video_data:
             title = video_data.get("title", "")
             summary = summarize_text(title, hf_api_key)
             img_url = get_unsplash_image(summary, unsplash_key)
-            
             hashtags = generate_hashtags(summary)
             message = f"{summary}\n\n{hashtags} 🔥"
             
-            post_to_facebook(fb_token, message, image_url=img_url)
+            post_to_facebook(fb_token, message, image_url=img_url, fb_id=fb_id)
             log_post(title, summary, message, img_url)
             
             tts_file = text_to_speech(summary)
-            result = {
-                "title": title,
-                "summary": summary,
-                "image": img_url,
-                "message": message,
-                "tts_file": tts_file
-            }
+            result = {"title": title, "summary": summary, "image": img_url, "message": message, "tts_file": tts_file}
+            
     return render_template("index.html", result=result, keys=keys)
 
 @app.route("/apikeys", methods=["GET", "POST"])
@@ -48,7 +41,8 @@ def apikeys():
         hf_api_key = request.form.get("hf_api_key")
         unsplash_key = request.form.get("unsplash_key")
         fb_token = request.form.get("fb_token")
-        save_api_keys(hf_api_key, unsplash_key, fb_token)
+        fb_id = request.form.get("fb_id")
+        save_api_keys(hf_api_key, unsplash_key, fb_token, fb_id)
         return redirect("/")
     return render_template("apikeys.html", keys=keys)
 
