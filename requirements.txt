@@ -1,6 +1,6 @@
 Flask==3.0.3
 transformers==4.39.3
-torch==2.2.2
+torch==2.5.1
 yt_dlp
 requests
 Pillow
