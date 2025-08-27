@@ -1,4 +1,3 @@
-# utils.py
 import os
 import re
 import time
@@ -18,24 +17,22 @@ CTRL_PATTERN = re.compile(r"[\u0000-\u0008\u000B-\u000C\u000E-\u001F]")
 def sanitize_text(text: Optional[str]) -> str:
     if not text:
         return ""
-    # normalize unicode
     text = unicodedata.normalize("NFKC", text)
-    # ensure utf-8 safe
     text = text.encode("utf-8", errors="ignore").decode("utf-8", errors="ignore")
-    # remove URLs
     text = URL_PATTERN.sub("", text)
-    # remove control chars
     text = CTRL_PATTERN.sub("", text)
-    # collapse spaces
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
 def fetch_tiktok_meta(video_url: str) -> Optional[Dict[str, Any]]:
-    """Use TikTok oEmbed to get basic metadata (title, author_name...)"""
     try:
-        r = requests.get("https://www.tiktok.com/oembed", params={"url": video_url},
-                         headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+        r = requests.get(
+            "https://www.tiktok.com/oembed",
+            params={"url": video_url},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=12
+        )
         r.raise_for_status()
         return r.json()
     except Exception:
@@ -47,10 +44,12 @@ def unsplash_search_image(query: str, unsplash_key: str) -> Optional[Dict[str, A
         return None
     try:
         q = sanitize_text(query) or "artificial intelligence"
-        r = requests.get("https://api.unsplash.com/search/photos",
-                         params={"query": q, "per_page": 1, "orientation": "landscape"},
-                         headers={"Accept-Version": "v1", "Authorization": f"Client-ID {unsplash_key}"},
-                         timeout=12)
+        r = requests.get(
+            "https://api.unsplash.com/search/photos",
+            params={"query": q, "per_page": 1, "orientation": "landscape"},
+            headers={"Accept-Version": "v1", "Authorization": f"Client-ID {unsplash_key}"},
+            timeout=12
+        )
         r.raise_for_status()
         data = r.json()
         if data.get("results"):
@@ -83,18 +82,15 @@ def summarize_with_hf(text: str, hf_token: str, min_length: int = 130, max_lengt
     try:
         r = requests.post(HF_MODEL_URL, headers=headers, json=payload, timeout=40)
         if r.status_code in (429, 503):
-            # busy or rate limited: fallback
             return text[:max_length]
         r.raise_for_status()
         data = r.json()
         if isinstance(data, list) and data and "summary_text" in data[0]:
             return sanitize_text(data[0]["summary_text"])
-        # fallback if different structure
         if isinstance(data, dict) and "error" in data:
             return text[:max_length]
         return sanitize_text(str(data))[:max_length]
     except Exception:
-        # fallback naive shorten
         return sanitize_text(text)[:max_length]
 
 
@@ -121,7 +117,6 @@ def get_api_keys_from_db() -> Dict[str, str]:
             "fb_page_id": row[2] or "",
             "fb_page_token": row[3] or ""
         }
-    # fallback to env
     return {
         "hf_token": os.environ.get("HF_TOKEN", ""),
         "unsplash_key": os.environ.get("UNSPLASH_KEY", ""),
@@ -142,17 +137,9 @@ def build_caption(meta: dict, summary: str) -> str:
 
 
 def process_one_url(url: str, keys: Dict[str, str]) -> Dict[str, Any]:
-    """
-    Main pipeline function used by pipeline.py:
-    - fetch tiktok meta
-    - summarize using HF
-    - get unsplash image
-    - download and post to FB
-    Returns dict result or raises exception.
-    """
     meta = fetch_tiktok_meta(url)
     if not meta:
-        raise Exception("Lỗi: không lấy được metadata TikTok (video có thể bị ẩn hoặc yêu cầu đăng nhập).")
+        raise Exception("Lỗi: không lấy được metadata TikTok.")
 
     raw_caption = meta.get("title") or meta.get("author_name") or ""
     clean_caption = sanitize_text(raw_caption)
@@ -162,10 +149,7 @@ def process_one_url(url: str, keys: Dict[str, str]) -> Dict[str, Any]:
     fb_page_id = keys.get("fb_page_id", "")
     fb_page_token = keys.get("fb_page_token", "")
 
-    # summarize
     summary = summarize_with_hf(clean_caption, hf_token, min_length=140, max_length=360)
-
-    # unsplash image
     img = unsplash_search_image(clean_caption or "artificial intelligence", unsplash_key)
     if not img:
         raise Exception("Lỗi: không tìm được ảnh Unsplash.")
@@ -175,5 +159,10 @@ def process_one_url(url: str, keys: Dict[str, str]) -> Dict[str, Any]:
 
     caption = build_caption(meta, summary)
     post_resp = post_photo_to_facebook(local_path, caption, fb_page_id, fb_page_token)
-    # return structured result
-    return {"facebook_response": post_resp, "summary": summary, "image_url": image_url, "meta": meta}
+
+    return {
+        "facebook_response": post_resp,
+        "summary": summary,
+        "image_url": image_url,
+        "meta": meta
+    }
