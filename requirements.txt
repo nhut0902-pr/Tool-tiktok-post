@@ -1,7 +1,7 @@
 Flask==3.0.3
 transformers==4.39.3
-torch>=2.0.0
+torch==2.2.2
 yt_dlp
-chartjs
-sqlite3-binary
+requests
+Pillow
 gunicorn==21.2.0
