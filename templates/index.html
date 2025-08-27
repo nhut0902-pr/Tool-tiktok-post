@@ -1,61 +1,36 @@
-<!-- templates/index.html -->
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mini TikTok → FB Tool</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  </head>
-  <body class="bg-light">
-    <div class="container py-4">
-      <h1 class="mb-4">Mini TikTok → Facebook</h1>
+<head>
+<meta charset="UTF-8">
+<title>TikTok AI Tool</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container py-5">
+    <h1 class="mb-4">TikTok AI Auto Post</h1>
+    <form method="POST">
+        <input type="url" name="tiktok_url" class="form-control mb-2" placeholder="Nhập link TikTok" required>
+        <input type="text" name="hf_api_key" class="form-control mb-2" placeholder="Hugging Face API Key" value="{{ keys.hf_api_key }}" required>
+        <input type="text" name="unsplash_key" class="form-control mb-2" placeholder="Unsplash Access Key" value="{{ keys.unsplash_key }}" required>
+        <input type="text" name="fb_token" class="form-control mb-2" placeholder="Facebook Page Access Token" value="{{ keys.fb_token }}" required>
+        <button type="submit" class="btn btn-primary mb-3">Xử lý & Post lên Facebook</button>
+    </form>
+    <a href="/apikeys" class="btn btn-secondary mb-3">Quản lý API Keys</a>
+    <a href="/history" class="btn btn-secondary mb-3">Xem Lịch Sử</a>
 
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, msg in messages %}
-            <div class="alert alert-{{ category }}">{% autoescape false %}{{ msg }}{% endautoescape %}</div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-
-      <div class="card mb-4">
-        <div class="card-body">
-          <form method="POST">
-            <div class="mb-3">
-              <label class="form-label">Link TikTok</label>
-              <input type="url" name="url" class="form-control" placeholder="https://www.tiktok.com/..." required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Hẹn giờ xử lý (tùy chọn)</label>
-              <input type="datetime-local" name="schedule_time" class="form-control">
-              <div class="form-text">Nếu để trống, link sẽ ở trạng thái pending để xử lý thủ công hoặc theo batch.</div>
-            </div>
-            <button class="btn btn-primary">Lưu Link</button>
-          </form>
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <a class="btn btn-secondary" href="{{ url_for('history') }}">Xem lịch sử</a>
-        <a class="btn btn-secondary" href="{{ url_for('apikeys') }}">Cấu hình API Keys</a>
-        <a class="btn btn-outline-success" href="{{ url_for('run_pending') }}">Chạy batch ngay (debug)</a>
-      </div>
-
-      <h5>Recent</h5>
-      <table class="table table-sm table-striped bg-white">
-        <thead><tr><th>ID</th><th>URL</th><th>Status</th><th>Schedule</th></tr></thead>
-        <tbody>
-        {% for row in links %}
-          <tr>
-            <td>{{ row['id'] }}</td>
-            <td><a href="{{ row['url'] }}" target="_blank">{{ row['url'] }}</a></td>
-            <td>{{ row['status'] }}</td>
-            <td>{{ row['schedule_time'] or '-' }}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    {% if result %}
+    <div class="card p-3">
+        <h5>Original:</h5><p>{{ result.title }}</p>
+        <h5>Summary:</h5><p>{{ result.summary }}</p>
+        <h5>Image:</h5><img src="{{ result.image }}" class="img-fluid mb-2">
+        <h5>Facebook Message:</h5><p>{{ result.message }}</p>
+        <h5>Nghe TTS:</h5>
+        <audio controls>
+            <source src="/tts/{{ result.tts_file }}" type="audio/mpeg">
+        </audio>
     </div>
-  </body>
+    {% endif %}
+</div>
+</body>
 </html>
