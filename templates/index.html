@@ -13,7 +13,8 @@
         <input type="url" name="tiktok_url" class="form-control mb-2" placeholder="Nhập link TikTok" required>
         <input type="text" name="hf_api_key" class="form-control mb-2" placeholder="Hugging Face API Key" value="{{ keys.hf_api_key }}" required>
         <input type="text" name="unsplash_key" class="form-control mb-2" placeholder="Unsplash Access Key" value="{{ keys.unsplash_key }}" required>
-        <input type="text" name="fb_token" class="form-control mb-2" placeholder="Facebook Page Access Token" value="{{ keys.fb_token }}" required>
+        <input type="text" name="fb_token" class="form-control mb-2" placeholder="Facebook Access Token" value="{{ keys.fb_token }}" required>
+        <input type="text" name="fb_id" class="form-control mb-2" placeholder="Facebook Page ID" value="{{ keys.fb_id }}" required>
         <button type="submit" class="btn btn-primary mb-3">Xử lý & Post lên Facebook</button>
     </form>
     <a href="/apikeys" class="btn btn-secondary mb-3">Quản lý API Keys</a>
