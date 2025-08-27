@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Thống Kê</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Dashboard Thống Kê</h1>
+    <div class="stats">
+        <p>Tổng số bài đã đăng: {{ total_posts }}</p>
+        <p>Lượt hiển thị: {{ insights_data.post_impressions }}</p>
+        <p>Lượt tương tác: {{ insights_data.post_engaged_users }}</p>
+        <p>Lượt click: {{ insights_data.post_clicks }}</p>
+    </div>
+
+    <canvas id="insightsChart" width="400" height="200"></canvas>
+    <script>
+        const ctx = document.getElementById('insightsChart');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Impressions', 'Engagements', 'Clicks'],
+                datasets: [{
+                    label: 'Facebook Insights',
+                    data: [
+                        {{ insights_data.post_impressions }},
+                        {{ insights_data.post_engaged_users }},
+                        {{ insights_data.post_clicks }}
+                    ]
+                }]
+            }
+        });
+    </script>
+    <br>
+    <a href="/">Quay lại Trang Chính</a>
+</body>
+</html>
